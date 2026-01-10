@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+<title>Steel Stacks</title>
+<script src="https://ufx.space/UFX.js"></script>
+<script src="game.js"></script>
+<canvas id=canvas style="background: black ; image-rendering: pixelated"></canvas>
+<script>
+"use strict"
+let DEBUG = window.location.href.includes("DEBUG")
+let tau = 2 * Math.PI
+let clamp = (x, a, b) => x < a ? a : x > b ? b : x
+let approach = (x, target, dx) => x < target ? Math.min(x + dx, target) : Math.max(x - dx, target)
+window.onerror = function (error, url, line) {
+	document.body.innerHTML = "<p>Error in: "+url+"<p>line "+line+"<pre>"+error+"</pre>"
+}
+let canvas = document.getElementById("canvas")
+canvas.width = 384
+canvas.height = 288
+let context = canvas.getContext("2d")
+UFX.maximize(canvas, { resize: false })
+UFX.draw.setcontext(context)
+UFX.audio.init()
+UFX.audio.makegainnode({ name: "main", gain: 1, })
+UFX.audio.makegainnode({ name: "sfx", output: "main" })
+UFX.audio.makegainnode({ name: "music", output: "main", gain: 0.3 })
+UFX.audio.loadbuffers({
+//	select: "sound/select.ogg",
+})
+function playsound(sname) {
+	UFX.audio.playbuffer(sname, { output: "sfx", gain: 1, })
+}
+UFX.key.init()
+UFX.key.remaparrows(true)
+UFX.key.watchlist = ["tab", "space", "enter", "left", "right", "up", "down", "F1", "esc"]
+UFX.resource.loadwebfonts("Pixelify Sans")
+let toload = {
+	end_screen: "img/end_screen.png",
+}
+UFX.resource.load(toload)
+UFX.resource.onload = () => {
+}
+UFX.scene.push("load")
+UFX.scene.init({ minups: 10, maxups: 120 })
+UFX.resource.onloading = (f) => {
+	UFX.scenes.load.f = f
+}
+UFX.scenes.load = {
+	f: 0,
+	tdot: 0,
+	think: function (dt) {
+		UFX.pointer.scale = UFX.maximize.scale.LD
+		let pointer = UFX.pointer(canvas)
+		let kstate = UFX.key.state()
+		if (this.f == 1) {
+			UFX.scene.swap("end")
+		}
+	},
+	draw: function () {
+		UFX.draw("fs #117 f0")
+	},
+}
+
+</script>
+
+
