@@ -1,0 +1,79 @@
+ <!DOCTYPE html>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+<title>Steel Stacks</title>
+<script src="https://ufx.space/UFX.js"></script>
+<script src="../util.js"></script>
+<canvas id=canvas style="background: black ; image-rendering: pixelated"></canvas>
+<script>
+"use strict"
+window.onerror = function (error, url, line) {
+	document.body.innerHTML = "<p>Error in: "+url+"<p>line "+line+"<pre>"+error+"</pre>"
+}
+let canvas = document.getElementById("canvas")
+canvas.width = 384
+canvas.height = 288
+let context = canvas.getContext("2d")
+UFX.maximize(canvas, { resize: false })
+UFX.draw.setcontext(context)
+UFX.resource.loadwebfonts("Pixelify Sans")
+let toload = {
+	character_ss: "../img/character_ss.png",
+	end_screen: "../img/end_screen.png",
+	buildings_glass: "../img/buildings_glass.png",
+}
+UFX.resource.load(toload)
+UFX.resource.onload = () => {
+	UFX.scene.push("anim_test")
+}
+UFX.scene.init({ minups: 10, maxups: 120 })
+UFX.scenes.anim_test = {
+	start: function () {
+		this.t = 0
+		this.end_anim = new Animation(slice_sprite_sheet("end_screen", 384, 288), 0.15, true)
+		let char_frames = slice_sprite_sheet("character_ss", 24, 24)
+		this.char_anims = {
+			walk_right: new Animation(char_frames.slice(0, 5), 0.15, true),
+			walk_left: new Animation(char_frames.slice(5, 10), 0.15, true),
+			jump_right: char_frames[10],
+			jump_left: char_frames[11],
+			pickup: new Animation(char_frames.slice(15, 16), 0.3, false),
+		}
+		let glass_frames = slice_sprite_sheet("buildings_glass", 24, 24)
+		this.glass_anims = {}
+		for (let stack_size = 1 ; stack_size <= 3 ; ++stack_size) {
+			for (let stack_position = 0 ; stack_position < stack_size ; ++stack_position) {
+				let row = stack_size - stack_position - 1, col = stack_size - 1
+				let frames = slicestep(glass_frames, 9 * row + col, 9 * (row + 1) + col, 3)
+				this.glass_anims[[stack_size, stack_position]] = new Animation(frames, 0.7, true)
+			}
+		}
+	},
+	think: function (dt) {
+		this.t += dt
+		this.end_anim.update(dt)
+		this.char_anims.walk_right.update(dt)
+		this.char_anims.walk_left.update(dt)
+		Object.values(this.glass_anims).forEach(anim => anim.update(dt))
+	},
+	draw: function () {
+		UFX.draw("fs #117 f0")
+		UFX.draw("drawimage0", this.end_anim.current_frame)
+		UFX.draw("drawimage", this.char_anims.walk_right.current_frame, 24, 24)
+		UFX.draw("drawimage", this.char_anims.walk_left.current_frame, 72, 24)
+		UFX.draw("drawimage", this.char_anims.jump_right, 24, 72)
+		UFX.draw("drawimage", this.char_anims.jump_left, 72, 72)
+		
+		for (let stack_position = 0 ; stack_position < 3 ; ++stack_position) {
+			let anim = this.glass_anims[[3, stack_position]]
+			UFX.draw("drawimage", anim.current_frame, 24, 200 - 24 * stack_position)
+		}
+	},
+}
+
+</script>
+
+
+ 
+ 
+ 
+

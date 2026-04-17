@@ -3,13 +3,11 @@
 <title>Steel Stacks</title>
 <script src="https://ufx.space/UFX.js"></script>
 <script src="game.js"></script>
+<script src="util.js"></script>
 <canvas id=canvas style="background: black ; image-rendering: pixelated"></canvas>
 <script>
 "use strict"
 let DEBUG = window.location.href.includes("DEBUG")
-let tau = 2 * Math.PI
-let clamp = (x, a, b) => x < a ? a : x > b ? b : x
-let approach = (x, target, dx) => x < target ? Math.min(x + dx, target) : Math.max(x - dx, target)
 window.onerror = function (error, url, line) {
 	document.body.innerHTML = "<p>Error in: "+url+"<p>line "+line+"<pre>"+error+"</pre>"
 }

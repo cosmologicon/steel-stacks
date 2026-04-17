@@ -2,13 +2,14 @@
 UFX.scenes.end = {
 	start: function () {
 		this.t = 0
+		this.bg = new Animation(slice_sprite_sheet("end_screen", 384, 288), 0.15, true)
 	},
 	think: function (dt) {
 		this.t += dt
+		this.bg.update(dt)
 	},
 	draw: function () {
-		let jframe = Math.floor(this.t / 0.15) % 7
-		UFX.draw("fs #611 f0 drawimage", UFX.resource.images.end_screen, -jframe * 384, 0)
+		UFX.draw("fs #611 f0 drawimage", this.bg.current_frame)
 	},
 }
 
