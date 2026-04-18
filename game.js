@@ -1,3 +1,4 @@
+"use strict"
 
 UFX.scenes.end = {
 	start: function () {
