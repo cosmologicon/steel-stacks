@@ -30,7 +30,6 @@ function slice_sprite_sheet(imgname, w, h) {
 	let img = UFX.resource.images[imgname]
 	let nx = Math.round(img.width / w)
 	let ny = Math.round(img.height / h)
-	console.log(imgname, w, h, nx, ny)
 	console.assert(nx * w == img.width && ny * h == img.height)
 	let frames = []
 	for (let jy = 0 ; jy < ny ; ++jy) {

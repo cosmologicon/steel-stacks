@@ -4,6 +4,7 @@
 <script src="https://ufx.space/UFX.js"></script>
 <script src="../util.js"></script>
 <script src="../world.js"></script>
+<script src="../room_data.js"></script>
 <canvas id=canvas style="background: black ; image-rendering: pixelated"></canvas>
 <script>
 "use strict"
@@ -26,7 +27,7 @@ UFX.resource.onload = () => {
 	let room = new Room("pw_2")
 //	room.checkpoint.activate()
 	room.receivers[0].activate()
-	UFX.draw("fs black f0")
+	UFX.draw("fs #1c253c f0")
 	room.draw()
 }
 </script>
