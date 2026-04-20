@@ -32,8 +32,8 @@ UFX.scenes.anim_test = {
 		this.end_anim = new Animation(slice_sprite_sheet("end_screen", 384, 288), 0.15, true)
 		let char_frames = slice_sprite_sheet("character_ss", 24, 24)
 		this.char_anims = {
-			walk_right: new Animation(char_frames.slice(0, 5), 0.15, true),
-			walk_left: new Animation(char_frames.slice(5, 10), 0.15, true),
+			walk_right: new Animation(char_frames.slice(1, 5), 0.15, true),
+			walk_left: new Animation(char_frames.slice(6, 10), 0.15, true),
 			jump_right: char_frames[10],
 			jump_left: char_frames[11],
 			pickup: new Animation(char_frames.slice(15, 16), 0.3, false),

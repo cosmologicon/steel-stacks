@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+<title>Steel Stacks | Character test</title>
+<script src="https://ufx.space/UFX.js"></script>
+<script src="../util.js"></script>
+<script src="../world.js"></script>
+<script src="../game.js"></script>
+<canvas id=canvas style="background: black ; image-rendering: pixelated"></canvas>
+<script>
+"use strict"
+window.onerror = function (error, url, line) {
+	document.body.innerHTML = "<p>Error in: "+url+"<p>line "+line+"<pre>"+error+"</pre>"
+}
+let canvas = document.getElementById("canvas")
+canvas.width = 384
+canvas.height = 288
+let context = canvas.getContext("2d")
+UFX.maximize(canvas, { resize: false })
+UFX.draw.setcontext(context)
+UFX.key.init()
+UFX.key.watchlist = ["left", "right", "up", "down", "space"]
+UFX.resource.loadwebfonts("Pixelify Sans")
+let toload = {
+	tiles_ss: "../img/tiles_ss.png",
+	character_ss: "../img/character_ss.png",
+	door_ss: "../img/door_ss.png",
+}
+UFX.resource.load(toload)
+UFX.resource.onload = () => {
+	UFX.scene.push("character_test")
+}
+UFX.scene.init({ fps: 50 })
+
+let room_data = {
+	test: {
+		tiles: [
+			  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+			  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+			  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+			  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+			  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+			  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+			  0,  0,  0,  0, 18,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+			 18,  0,  0,  0,  0,  0,  0, 18,  0,  0, 18,  0,  0,  0,  0, 18,
+			 18,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 18,  0,  0, 18,
+			 18, 18,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 18, 18,
+			 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18,
+			 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18,
+		],
+		receivers: [],
+		doors: [],
+	},
+}
+LEVEL_GRID = [['.', '.', 'test']]
+
+UFX.scenes.character_test = {
+	start: function () {
+		world.init()
+	},
+	think: function (dt) {
+		let key = UFX.key.state()
+		let move_x = (key.pressed.right ? 1 : 0) - (key.pressed.left ? 1 : 0)
+		world.character.control(move_x, key.down.space, key.pressed.space)
+		world.character.update(dt)
+	},
+	draw: function () {
+		UFX.draw("fs #070f17 f0")
+		world.room.draw()
+		UFX.draw(world.character.draw())
+		let lines = [
+			`pos: ${world.character.pos}`,
+			`vel: ${world.character.vel}`,
+			`grounded: ${world.character.grounded}`,
+		]
+		UFX.draw.text(lines.join("\n"), [0, 2], 12, "Pixelify Sans", { fill: "white", tab: "left top" })
+	},
+}
+</script>
+
+
+ 
+ 
+ 
+
