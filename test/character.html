@@ -5,6 +5,7 @@
 <script src="../util.js"></script>
 <script src="../world.js"></script>
 <script src="../game.js"></script>
+<script src="../blocks.js"></script>
 <canvas id=canvas style="background: black ; image-rendering: pixelated"></canvas>
 <script>
 "use strict"
@@ -18,7 +19,9 @@ let context = canvas.getContext("2d")
 UFX.maximize(canvas, { resize: false })
 UFX.draw.setcontext(context)
 UFX.key.init()
-UFX.key.watchlist = ["left", "right", "up", "down", "space"]
+UFX.key.watchlist = ["left", "right", "up", "down", "jump"]
+UFX.key.remap({ space: "jump" })
+UFX.key.remaparrows(true)
 UFX.resource.loadwebfonts("Pixelify Sans")
 let toload = {
 	tiles_ss: "../img/tiles_ss.png",
@@ -43,8 +46,8 @@ let room_data = {
 			  0,  0,  0,  0, 18,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
 			 18,  0,  0,  0,  0,  0,  0, 18,  0,  0, 18,  0,  0,  0,  0, 18,
 			 18,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 18,  0,  0, 18,
-			 18, 18,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 18, 18,
-			 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18,
+			 18,  1,  1,  1,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 18, 18,
+			 18, 18, 18, 18, 18, 18, 18,  1,  1, 18, 18, 18, 18, 18, 18, 18,
 			 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18, 18,
 		],
 		receivers: [],
@@ -59,8 +62,7 @@ UFX.scenes.character_test = {
 	},
 	think: function (dt) {
 		let key = UFX.key.state()
-		let move_x = (key.pressed.right ? 1 : 0) - (key.pressed.left ? 1 : 0)
-		world.character.control(move_x, key.down.space, key.pressed.space)
+		world.character.control(key)
 		world.character.update(dt)
 	},
 	draw: function () {
@@ -70,7 +72,7 @@ UFX.scenes.character_test = {
 		let lines = [
 			`pos: ${world.character.pos}`,
 			`vel: ${world.character.vel}`,
-			`grounded: ${world.character.grounded}`,
+			`is_centering: ${world.character.is_centering}`,
 		]
 		UFX.draw.text(lines.join("\n"), [0, 2], 12, "Pixelify Sans", { fill: "white", tab: "left top" })
 	},

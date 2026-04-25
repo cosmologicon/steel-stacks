@@ -15,6 +15,7 @@ UFX.scenes.end = {
 }
 
 
+
 function Character(pos) {
 	this.pos = pos
 	this.vel = [0, 0]
@@ -23,6 +24,19 @@ function Character(pos) {
 	this.jump_down = false
 	this.jump_held = false
 	this.facing_right = true
+	this.is_centering = false
+	this.centering_targetx = null
+	this.picking_up = false
+	this.centering_callback = null
+	this.held_blocks = new HeldBlocks()
+
+	// Half-widths (u is half of w, get it?)
+	this.ucollide = 7  // for collision with walls
+	this.ustand = 7  // for grounding
+	this.upickup = 9  // for picking up
+	this.udraw = 12
+	this.h = 24
+
 
 	this.max_move_speed = 100
 	this.move_accel = 1000
@@ -51,18 +65,34 @@ function Character(pos) {
 Character.prototype = {
 	set_pos: function (pos) {
 		this.pos = pos
-		this.rect = rect_centered_at(pos, [14, 24])
+		this.rect = rect_centered_at(pos, [2 * this.ucollide, 24])
 		let [x, y, w, h] = this.rect
 		this.xinterval = [x, w]
 		this.yinterval = [y, h]
 	},
+	set_x: function (x) {
+		this.set_pos([x, this.pos[1]])
+	},
+	// Returns true if the target position is reached.
+	approach: function (target, dpos) {
+		let [x, y] = this.pos, [xtarget, ytarget] = target
+		x = approach(x, xtarget, dpos)
+		y = approach(y, ytarget, dpos)
+		this.set_pos([x, y])
+		return x == xtarget && y == ytarget
+	},
+	midbottom: function () {
+		let [x, y, w, h] = this.rect
+		return [x, y + h]
+	},
 	scoot: function (dpos) {
 		this.set_pos(vec_add(this.pos, dpos))
 	},
-	control: function (move_x, jump_down, jump_held) {
-		this.move_x = move_x
-		this.jump_held = jump_held
-		this.jump_down = jump_down
+	control: function (key) {
+		this.move_x = (key.pressed.right ? 1 : 0) - (key.pressed.left ? 1 : 0)
+		this.jump_held = key.pressed.jump
+		this.jump_down = key.down.jump
+		if (key.down.down) this.attempt_pickup()
 	},
 	jump: function () {
 		let [vx, vy] = this.vel
@@ -70,10 +100,54 @@ Character.prototype = {
 		this.var_jump_timer = this.var_jump_time
 		this.grounded = false
 	},
+	find_pickup_target_block: function () {
+		if (!this.grounded) return null
+		// TODO: check num blocks held < 3
+		for (let obj of world.pickup_targets(this.midbottom(), this.upickup)) {
+			return obj
+		}
+		return null
+	},
+	attempt_pickup: function () {
+		if (this.is_centering) return
+		let target_block = this.find_pickup_target_block()
+		if (!target_block) return
+		this.centering_targetx = target_block.get_pickup_centerx()
+		this.picking_up = true
+		this.is_centering = true
+		this.centering_callback = this.complete_pickup.bind(this, target_block)
+	},
+	finish_centering: function () {
+		this.is_centering = false
+		this.centering_finish_timer = 0.15
+		this.centering_locked_position = [this.pos[0], this.pos[1]]
+		this.centering_target = null
+	},
+	complete_pickup: function (block) {
+		this.picking_up = false
+		this.set_x(this.centering_targetx)
+		world.remove_ore(block)
+		this.held_blocks.add_held(block)
+	},
 	update: function (dt) {
-		this.update_movement(dt)
-		if (this.jump_down && this.coyote_timer > 0) this.jump()
-		this.update_position(dt)
+		if (this.centering_finish_timer > 0) {
+			this.centering_finish_timer = approach(this.centering_finish_timer, 0, dt)
+			if (this.centering_finish_timer == 0) {
+				if (this.centering_callback) {
+					this.centering_callback()
+					this.centering_callback = null
+				}
+				this.centering_locked_position = null
+			}
+		}
+		if (this.is_centering) {
+			this.update_centering(dt)
+		} else if (!this.centering_locked_position) {
+			this.update_movement(dt)
+			this.update_position(dt)
+		} else {
+			this.set_pos(this.centering_locked_position)
+		}
 
 		if (this.move_x > 0) this.facing_right = true
 		if (this.move_x < 0) this.facing_right = false
@@ -110,6 +184,7 @@ Character.prototype = {
 			}
 		}
 		this.vel = [vx, vy]
+		if (this.jump_down && this.coyote_timer > 0) this.jump()
 //		console.log(this.grounded, this.var_jump_timer, this.vel, 228 - this.pos[1])
 	},
 	update_position: function (dt) {
@@ -123,6 +198,19 @@ Character.prototype = {
 			this.grounded = false
 		} else if (this.grounded && vy == 0) {
 			this.grounded = world.is_on_ground(this.rect)
+		}
+		let midtop = vec_add(this.pos, [0, -12])
+		this.held_blocks.update_positions(midtop)
+	},
+	update_centering: function (dt) {
+		if (!this.centering_target) {
+			console.log("!this.centering_target")
+			this.finish_centering()
+			return
+		}
+		let centering_speed = 150
+		if (this.approach(this.centering_target, centering_speed * dt)) {
+			this.finish_centering()
 		}
 	},
 	collide_horizontal: function (obj) {
@@ -155,7 +243,8 @@ Character.prototype = {
 	draw: function () {
 		let [x, y, w, h] = this.rect
 		let [x0, y0] = this.pos
-		return ["drawimage", this.image, x0 - 12, y0 - 12] // , "[ alpha 0.3 fs yellow fr", this.rect, "]"]
+		let spec = ["drawimage", this.image, Math.round(x0) - 12, Math.round(y0) - 12] // , "[ alpha 0.3 fs yellow fr", this.rect, "]"]
+		return spec.concat(this.held_blocks.held.map(block => block.draw()))
 	},
 }
 

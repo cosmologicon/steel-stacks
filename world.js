@@ -53,7 +53,6 @@ Door.prototype = {
 	draw: function () {
 		return ["drawimage", this.image, this.pos]
 	},
-
 }
 
 function SolidBlock(tile_pos) {
@@ -65,6 +64,25 @@ function SolidBlock(tile_pos) {
 	this.yinterval = [y, h]
 }
 
+function NormalOre(tile_pos) {
+	this.tile_pos = tile_pos
+	this.pos = tile_to_xy(tile_pos)
+	let [x, y] = this.pos, [w, h] = [24, 24]
+	this.rect = [x, y, w, h]
+	this.xinterval = [x, w]
+	this.yinterval = [y, h]
+	this.image = tile_img(0)
+}
+NormalOre.prototype = {
+	draw: function () {
+		return ["drawimage", this.image, this.pos]
+	},
+	get_pickup_centerx: function () {
+		let [x, y, w, h] = this.rect
+		return x + w / 2
+	},
+}
+
 
 function Room(room_id) {
 	this.data = room_data[room_id]
@@ -74,23 +92,37 @@ Room.prototype = {
 	load: function () {
 		this.images = []
 		this.blocks = []
+		this.ore = []
+		this.buildings = []
 		for (let y = 0 , j = 0 ; y < 12 ; ++y) {
 			for (let x = 0 ; x < 16 ; ++x , ++j) {
 				let gid = this.data.tiles[j]
 				if (gid == 0) continue
 				gid -= 1
-				this.images.push(["drawimage", tile_img(gid), 24 * x, 24 * y])
-				this.blocks.push(new SolidBlock([x, y]))
+				if (gid == 0) {
+					this.ore.push(new NormalOre([x, y]))
+				} else {
+					this.images.push(["drawimage", tile_img(gid), 24 * x, 24 * y])
+					this.blocks.push(new SolidBlock([x, y]))
+				}
 			}
 		}
 		this.checkpoint = this.data.checkpoint ? new Checkpoint(this.data.checkpoint) : null
 		this.receivers = (this.data.receivers || []).map(pos => new Receiver(pos))
 		this.doors = (this.data.doors || []).map(pos => new Door(pos))
-		this.objs = (this.checkpoint ? [this.checkpoint] : []).concat(this.receivers, this.doors)
+		this.set_collections()
+	},
+	set_collections: function () {
+		this.drawers = (this.checkpoint ? [this.checkpoint] : []).concat(this.receivers, this.doors, this.ore)
+		this.colliders = this.blocks.concat(this.ore)
+	},
+	remove_ore: function (block) {
+		this.ore = this.ore.filter(obj => obj != block)
+		this.set_collections()
 	},
 	draw: function () {
 		UFX.draw(this.images)
-		UFX.draw(this.objs.map(obj => obj.draw()))
+		UFX.draw(this.drawers.map(obj => obj.draw()))
 	},
 }
 
@@ -133,15 +165,31 @@ let world = {
 		this.load_room()
 		this.character.scoot([-384 * dx, -288 * dy])
 	},
+
 	// All objects that collide with the given rect
 	get_colliders: function (rect) {
-		return this.room.blocks.filter(block => rect_collide(block.rect, rect))
+		return this.room.colliders.filter(block => rect_collide(block.rect, rect))
 	},
 	is_on_ground: function (rect) {
 		let [x, y, w, h] = rect, ybase = y + h
 		let ps = [[x, ybase], [x + w - 1, ybase]]
 		// TODO: more efficient
 		return ps.some(([x, y]) => this.get_colliders([x, y, 1, 1]).length)
+	},
+	pickup_targets: function (pos, u) {
+		let [x, y] = pos, rect = [x - u, y, 2 * u, 1], xinterval = [x - u, 2 * u]
+		let targets = this.room.ore.filter(obj => rect_collide(rect, obj.rect))
+		if (!targets.length) return []
+		let abs_overlap = obj => get_abs_overlap(obj.xinterval, xinterval)
+		console.log(xinterval, targets[0].xinterval)
+		console.log(targets.map(obj => abs_overlap(obj)))
+		console.assert(targets.every(obj => abs_overlap(obj) > 0))
+		// Sort from most to least overlap
+		targets.sort((obj0, obj1) => abs_overlap(obj1) - abs_overlap(obj0))
+		return targets
+	},
+	remove_ore: function (block) {
+		this.room.remove_ore(block)
 	},
 }
 

@@ -17,7 +17,10 @@ let range = (start, stop, step) => {
 let slicestep = (arr, start, stop, step) => range(start, stop, step).map(j => arr[j])
 let vec_add = ([x0, y0], [x1, y1]) => [x0 + x1, y0 + y1]
 let rect_centered_at = ([x, y], [w, h]) => [x - w/2, y - h/2, w, h]
+
+// Intervals are [x, w] Arrays representing the half-open interval [x, x+w).
 let interval_collide = ([x0, w0], [x1, w1]) => x0 + w0 > x1 && x1 + w1 > x0
+let get_abs_overlap = ([x0, w0], [x1, w1]) => Math.max(Math.min(x0 + w0 - x1, x1 + w1 - x0), 0)
 let rect_collide = ([x0, y0, w0, h0], [x1, y1, w1, h1]) =>
 	interval_collide([x0, w0], [x1, w1]) && interval_collide([y0, h0], [y1, h1])
 // How far the first interval must move to the left and right to not overlap the second obj.
