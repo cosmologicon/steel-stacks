@@ -7,7 +7,7 @@ function tile_img(gid) {
 
 function Checkpoint(tile_pos) {
 	this.tile_pos = tile_pos
-	this.pos = tile_to_xy(tile_pos)
+	this.pos = GconvertT(tile_pos)
 	this.active = false
 }
 Checkpoint.prototype = {
@@ -25,7 +25,7 @@ Checkpoint.prototype = {
 
 function Receiver(tile_pos) {
 	this.tile_pos = tile_pos
-	this.pos = tile_to_xy(tile_pos)
+	this.pos = GconvertT(tile_pos)
 	this.active = false
 }
 Receiver.prototype = {
@@ -42,7 +42,7 @@ Receiver.prototype = {
 
 function Door(tile_pos) {
 	this.tile_pos = tile_pos
-	this.pos = tile_to_xy(tile_pos)
+	this.pos = GconvertT(tile_pos)
 	this.open = false
 	let frames = slice_sprite_sheet("door_ss", 24, 48)
 	this.open_anim = new Animation(frames, 0.1)
@@ -55,9 +55,11 @@ Door.prototype = {
 	},
 }
 
-function SolidBlock(tile_pos) {
+
+// Placeholder object that represents a solid piece of the fixed background.
+function Slab(tile_pos) {
 	this.tile_pos = tile_pos
-	this.pos = tile_to_xy(tile_pos)
+	this.pos = GconvertT(tile_pos)
 	let [x, y] = this.pos, [w, h] = [24, 24]
 	this.rect = [x, y, w, h]
 	this.xinterval = [x, w]
@@ -66,7 +68,7 @@ function SolidBlock(tile_pos) {
 
 function NormalOre(tile_pos) {
 	this.tile_pos = tile_pos
-	this.pos = tile_to_xy(tile_pos)
+	this.pos = GconvertT(tile_pos)
 	let [x, y] = this.pos, [w, h] = [24, 24]
 	this.rect = [x, y, w, h]
 	this.xinterval = [x, w]
@@ -90,8 +92,10 @@ function Room(room_id) {
 }
 Room.prototype = {
 	load: function () {
-		this.images = []
-		this.blocks = []
+		let nx = 16, ny = 12
+		console.assert(this.data.tiles.length == nx * ny)
+		this.bg = make_canvas(GconvertT([nx, ny]), "fs #070f17 f0")  // TODO: bg image
+		this.slabs = {}
 		this.ore = []
 		this.buildings = []
 		for (let y = 0 , j = 0 ; y < 12 ; ++y) {
@@ -102,8 +106,8 @@ Room.prototype = {
 				if (gid == 0) {
 					this.ore.push(new NormalOre([x, y]))
 				} else {
-					this.images.push(["drawimage", tile_img(gid), 24 * x, 24 * y])
-					this.blocks.push(new SolidBlock([x, y]))
+					UFX.draw(this.bg.context, ["drawimage", tile_img(gid), GconvertT([x, y])])
+					this.slabs[[x, y]] = new Slab([x, y])
 				}
 			}
 		}
@@ -114,14 +118,19 @@ Room.prototype = {
 	},
 	set_collections: function () {
 		this.drawers = (this.checkpoint ? [this.checkpoint] : []).concat(this.receivers, this.doors, this.ore)
-		this.colliders = this.blocks.concat(this.ore)
+		this.colliders = this.ore.concat(this.doors)
 	},
 	remove_ore: function (block) {
 		this.ore = this.ore.filter(obj => obj != block)
 		this.set_collections()
 	},
+	// All slabs that share a tile with the given rect, and all collidable objects.
+	get_potential_colliders: function (rectG) {
+		let slabs = TrectG(rectG).filter(p => p in this.slabs).map(p => this.slabs[p])
+		return slabs.concat(this.colliders)
+	},
 	draw: function () {
-		UFX.draw(this.images)
+		UFX.draw("drawimage0", this.bg)
 		UFX.draw(this.drawers.map(obj => obj.draw()))
 	},
 }
@@ -168,7 +177,7 @@ let world = {
 
 	// All objects that collide with the given rect
 	get_colliders: function (rect) {
-		return this.room.colliders.filter(block => rect_collide(block.rect, rect))
+		return this.room.get_potential_colliders(rect).filter(obj => rect_collide(obj.rect, rect))
 	},
 	is_on_ground: function (rect) {
 		let [x, y, w, h] = rect, ybase = y + h

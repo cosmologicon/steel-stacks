@@ -1,7 +1,6 @@
 "use strict"
 
-let tau = 2 * Math.PI
-let div = (x, n) => ((x % n) + n) % n
+let mod = (x, n) => ((x % n) + n) % n
 let clamp = (x, a, b) => x < a ? a : x > b ? b : x
 let approach = (x, target, dx) => x < target ? Math.min(x + dx, target) : Math.max(x - dx, target)
 let range = (start, stop, step) => {
@@ -15,25 +14,43 @@ let range = (start, stop, step) => {
 	return js
 }
 let slicestep = (arr, start, stop, step) => range(start, stop, step).map(j => arr[j])
+// Cartesian product of two Arrays
+let product = (xs, ys) => xs.map(x => ys.map(y => [x, y])).flat()
 let vec_add = ([x0, y0], [x1, y1]) => [x0 + x1, y0 + y1]
-let rect_centered_at = ([x, y], [w, h]) => [x - w/2, y - h/2, w, h]
 
 // Intervals are [x, w] Arrays representing the half-open interval [x, x+w).
 let interval_collide = ([x0, w0], [x1, w1]) => x0 + w0 > x1 && x1 + w1 > x0
-let get_abs_overlap = ([x0, w0], [x1, w1]) => Math.max(Math.min(x0 + w0 - x1, x1 + w1 - x0), 0)
-let rect_collide = ([x0, y0, w0, h0], [x1, y1, w1, h1]) =>
-	interval_collide([x0, w0], [x1, w1]) && interval_collide([y0, h0], [y1, h1])
 // How far the first interval must move to the left and right to not overlap the second obj.
 // Both values are positive if the intervals collide.
 let interval_overlaps = ([x0, w0], [x1, w1]) => [x0 + w0 - x1, x1 + w1 - x0]
+let get_abs_overlap = ([x0, w0], [x1, w1]) => Math.max(Math.min(x0 + w0 - x1, x1 + w1 - x0), 0)
 
-function tile_to_xy(tilepos) {
-	let [tile_x, tile_y] = tilepos
-	return [tile_x * 24, tile_y * 24]
-}
-function xy_to_tile(xy) {
-	let [x, y] = xy
-	return [Math.floor(x / 24), Math.floor(y / 24)]
+// Rects include all points whose x-coordinate is within the interval [x, w] and
+// y-coordinate is within the interval [y, h].
+let rect_collide = ([x0, y0, w0, h0], [x1, y1, w1, h1]) =>
+	interval_collide([x0, w0], [x1, w1]) && interval_collide([y0, h0], [y1, h1])
+let rect_centered_at = ([x, y], [w, h]) => [x - w/2, y - h/2, w, h]
+
+let GscaleT = 24  // Tile size
+// T: tile coordinates (integers). A point is within the tile.
+let GconvertT = ([xT, yT]) => [GscaleT * xT, GscaleT * yT]
+let TconvertG = ([xG, yG]) => [Math.floor(xG / GscaleT), Math.floor(yG / GscaleT)]
+
+// Tiles covered by the interval/rect.
+let TintervalG = ([xG, wG]) => range(Math.floor(xG / GscaleT), (xG + wG) / GscaleT)
+let TrectG = ([x, y, w, h]) => product(TintervalG([x, w]), TintervalG([y, h]))
+console.assert("" + TintervalG([10, 14]) == [0])
+console.assert("" + TintervalG([10, 15]) == [0, 1])
+
+
+// Returns a canvas of the given size with a `context` member.
+function make_canvas([w, h], draw_command) {
+	let canvas = document.createElement("canvas")
+	canvas.width = w
+	canvas.height = h
+	canvas.context = canvas.getContext("2d")
+	if (draw_command) UFX.draw(canvas.context, draw_command)
+	return canvas
 }
 
 
@@ -45,22 +62,14 @@ function slice_sprite_sheet(imgname, w, h) {
 	let frames = []
 	for (let jy = 0 ; jy < ny ; ++jy) {
 		for (let jx = 0 ; jx < nx ; ++jx) {
-			let frame = document.createElement("canvas")
-			frame.width = w
-			frame.height = h
-			UFX.draw(frame.getContext("2d"), "drawimage", img, -w * jx, -h * jy)
-			frames.push(frame)
+			frames.push(make_canvas([w, h], ["drawimage", img, -w * jx, -h * jy]))
 		}
 	}
 	return frames
 }
 
 function copy_image(img) {
-	let copy = document.createElement("canvas")
-	copy.width = img.width
-	copy.height = img.height
-	UFX.draw(copy.getContext("2d"), "c0 drawImage0", img)
-	return copy
+	return make_canvas([img.width, img.height], ["c0 drawimage0", img])
 }
 
 function glow_image(img) {
@@ -106,7 +115,7 @@ Animation.prototype = {
 	set_frame: function () {
 		let jframe0 = Math.floor(this.t / this.interval)
 		let nframe = this.frames.length
-		this.jframe = this.loop ? div(jframe0, nframe) : clamp(jframe0, 0, nframe - 1)
+		this.jframe = this.loop ? mod(jframe0, nframe) : clamp(jframe0, 0, nframe - 1)
 		this.current_frame = this.frames[this.jframe]
 	},
 	update: function (dt) {
