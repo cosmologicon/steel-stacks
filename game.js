@@ -56,6 +56,7 @@ function Character(pos) {
 		walk_left: new Animation(char_frames.slice(6, 10), 0.15, true),
 		jump_right: char_frames[10],
 		jump_left: char_frames[11],
+		pickup: char_frames[15],  // TODO: why animation?
 	}
 }
 Character.prototype = UFX.Thing()
@@ -86,7 +87,7 @@ Character.prototype = UFX.Thing()
 			if (this.is_centering) return
 			let target_block = this.find_pickup_target_block()
 			if (!target_block) return
-			this.centering_targetx = target_block.get_centerx()
+			this.centering_target = target_block.get_anchor_top()
 			this.picking_up = true
 			this.is_centering = true
 			this.centering_callback = this.complete_pickup.bind(this, target_block)
@@ -99,7 +100,7 @@ Character.prototype = UFX.Thing()
 		},
 		complete_pickup: function (block) {
 			this.picking_up = false
-			this.set_centerx(this.centering_targetx)
+			this.set_anchor_bottom(block.get_anchor_top())
 			world.remove_ore(block)
 			this.held_blocks.add_held(block)
 		},
@@ -126,19 +127,17 @@ Character.prototype = UFX.Thing()
 			if (this.move_x > 0) this.facing_right = true
 			if (this.move_x < 0) this.facing_right = false
 			
-			let dir = this.facing_right ? "right" : "left"
-			if (!this.grounded) {
-				this.image = this.images[`jump_${dir}`]
-			} else {
-				if (this.move_x == 0) {
-					this.image = this.images[`stand_${dir}`]
-				} else {
-					let anim = this.images[`walk_${dir}`]
-					anim.update(dt)
-					this.image = anim.current_frame
-				}
-			}
+			this.image = this.get_image(dt)
 			this.var_jump_timer = approach(this.var_jump_timer, 0, dt)
+		},
+		get_image: function (dt) {
+			if (this.picking_up) return this.images.pickup
+			let dir = this.facing_right ? "right" : "left"
+			if (!this.grounded) return this.images[`jump_${dir}`]
+			if (this.move_x == 0) return this.images[`stand_${dir}`]
+			let anim = this.images[`walk_${dir}`]
+			anim.update(dt)
+			return anim.current_frame
 		},
 		update_movement: function (dt) {
 			let [vx, vy] = this.vel
@@ -181,9 +180,10 @@ Character.prototype = UFX.Thing()
 				return
 			}
 			let centering_speed = 150
-			if (this.approach(this.centering_target, centering_speed * dt)) {
+			if (this.approach_anchor_bottom(this.centering_target, centering_speed * dt)) {
 				this.finish_centering()
 			}
+			this.held_blocks.update_positions(this.get_anchor_top())
 		},
 		collide_horizontal: function (obj) {
 			let [vx, vy] = this.vel

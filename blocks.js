@@ -48,6 +48,10 @@ let CollisionRect = {
 		this.set_pos([x, y])
 		return x == xtarget && y == ytarget
 	},
+	approach_anchor_bottom: function (target, dpos) {
+		let [x, y, w, h] = this.rect
+		return this.approach(vec_add(target, [-w/2, -h]), dpos)
+	},
 	scoot: function (dpos) {
 		this.set_pos(vec_add(this.get_pos(), dpos))
 	},
