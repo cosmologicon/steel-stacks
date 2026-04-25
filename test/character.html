@@ -3,9 +3,9 @@
 <title>Steel Stacks | Character test</title>
 <script src="https://ufx.space/UFX.js"></script>
 <script src="../util.js"></script>
+<script src="../blocks.js"></script>
 <script src="../world.js"></script>
 <script src="../game.js"></script>
-<script src="../blocks.js"></script>
 <canvas id=canvas style="background: black ; image-rendering: pixelated"></canvas>
 <script>
 "use strict"
@@ -66,9 +66,8 @@ UFX.scenes.character_test = {
 		world.character.update(dt)
 	},
 	draw: function () {
-		UFX.draw("fs #070f17 f0")
 		world.room.draw()
-		UFX.draw(world.character.draw())
+		world.character.draw()
 		let lines = [
 			`pos: ${world.character.pos}`,
 			`vel: ${world.character.vel}`,

@@ -1,9 +1,18 @@
+"use strict"
 
 let tile_imgs = null
 function tile_img(gid) {
 	tile_imgs ||= slice_sprite_sheet("tiles_ss", 24, 24)
 	return tile_imgs[gid]
 }
+
+// Placeholder object that represents a solid 1-tile piece of the fixed background.
+function Slab(tile_pos) {
+	this.set_tile_pos(tile_pos)
+}
+Slab.prototype = UFX.Thing()
+	.addcomp(CollisionRect)
+
 
 function Checkpoint(tile_pos) {
 	this.tile_pos = tile_pos
@@ -56,34 +65,16 @@ Door.prototype = {
 }
 
 
-// Placeholder object that represents a solid piece of the fixed background.
-function Slab(tile_pos) {
-	this.tile_pos = tile_pos
-	this.pos = GconvertT(tile_pos)
-	let [x, y] = this.pos, [w, h] = [24, 24]
-	this.rect = [x, y, w, h]
-	this.xinterval = [x, w]
-	this.yinterval = [y, h]
-}
+
+
 
 function NormalOre(tile_pos) {
-	this.tile_pos = tile_pos
-	this.pos = GconvertT(tile_pos)
-	let [x, y] = this.pos, [w, h] = [24, 24]
-	this.rect = [x, y, w, h]
-	this.xinterval = [x, w]
-	this.yinterval = [y, h]
+	this.set_tile_pos(tile_pos)
 	this.image = tile_img(0)
 }
-NormalOre.prototype = {
-	draw: function () {
-		return ["drawimage", this.image, this.pos]
-	},
-	get_pickup_centerx: function () {
-		let [x, y, w, h] = this.rect
-		return x + w / 2
-	},
-}
+NormalOre.prototype = UFX.Thing()
+	.addcomp(CollisionRect)
+	.addcomp(DrawImage)
 
 
 function Room(room_id) {
@@ -131,7 +122,7 @@ Room.prototype = {
 	},
 	draw: function () {
 		UFX.draw("drawimage0", this.bg)
-		UFX.draw(this.drawers.map(obj => obj.draw()))
+		this.drawers.forEach(obj => obj.draw())
 	},
 }
 

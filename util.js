@@ -17,6 +17,7 @@ let slicestep = (arr, start, stop, step) => range(start, stop, step).map(j => ar
 // Cartesian product of two Arrays
 let product = (xs, ys) => xs.map(x => ys.map(y => [x, y])).flat()
 let vec_add = ([x0, y0], [x1, y1]) => [x0 + x1, y0 + y1]
+let round_pos = ([x, y]) => [Math.round(x), Math.round(y)]
 
 // Intervals are [x, w] Arrays representing the half-open interval [x, x+w).
 let interval_collide = ([x0, w0], [x1, w1]) => x0 + w0 > x1 && x1 + w1 > x0
@@ -31,7 +32,8 @@ let rect_collide = ([x0, y0, w0, h0], [x1, y1, w1, h1]) =>
 	interval_collide([x0, w0], [x1, w1]) && interval_collide([y0, h0], [y1, h1])
 let rect_centered_at = ([x, y], [w, h]) => [x - w/2, y - h/2, w, h]
 
-let GscaleT = 24  // Tile size
+let GscaleT = 24  // Game units per tile.
+let tile_size = [GscaleT, GscaleT]
 // T: tile coordinates (integers). A point is within the tile.
 let GconvertT = ([xT, yT]) => [GscaleT * xT, GscaleT * yT]
 let TconvertG = ([xG, yG]) => [Math.floor(xG / GscaleT), Math.floor(yG / GscaleT)]
