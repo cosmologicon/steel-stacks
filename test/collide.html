@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
+<title>Steel Stacks | Character test</title>
+<script src="https://ufx.space/UFX.js"></script>
+<script src="../util.js"></script>
+<script src="../blocks.js"></script>
+<script src="../world.js"></script>
+<script src="../game.js"></script>
+<style>
+textarea { background: rgba(0,0,0,0.1) ; color: inherit }
+</style>
+<body style="background: #234 ; color: white ; font-family: 'Pixelify Sans'">
+<canvas id=canvas style="background: black ; image-rendering: pixelated"></canvas>
+<p><textarea id=readout rows=10 cols=100></textarea>
+<p><button onclick="advance(1)">Advance 1 frame</button>
+<button onclick="advance(10)">Advance 10 frame</button>
+<p><button onclick="jump()">Press Jump</button>
+<p><input type="checkbox" id="jump_held" name="jump_held" checked />
+<label for="jump_held">Hold jump</label>
+<input type="checkbox" id="left_held" name="left_held" />
+<label for="left_held">Hold left</label>
+<input type="checkbox" id="right_held" name="right_held" />
+<label for="right_held">Hold right</label>
+<script>
+"use strict"
+window.onerror = function (error, url, line) {
+	document.body.innerHTML = "<p>Error in: "+url+"<p>line "+line+"<pre>"+error+"</pre>"
+}
+let canvas = document.getElementById("canvas")
+canvas.width = 384
+canvas.height = 288
+let context = canvas.getContext("2d")
+UFX.draw.setcontext(context)
+UFX.resource.loadwebfonts("Pixelify Sans")
+let toload = {
+	tiles_ss: "../img/tiles_ss.png",
+	character_ss: "../img/character_ss.png",
+}
+UFX.resource.load(toload)
+UFX.resource.onload = () => {
+	UFX.scene.push("collide_test")
+}
+UFX.scene.init({ fps: 50 })
+
+let room_data = {
+	one_block: {
+		tiles: [
+			  0, 18,  0,
+			  0,  0,  0,
+			 18, 18, 18,
+		],
+		size: [3, 3],
+		scale: 10,
+		receivers: [],
+		doors: [],
+		char_start: [1, 1],
+	},
+	hold_one: {
+		tiles: [
+			  0, 18,  0,
+			  0,  0, 18,
+			  0,  0,  0,
+			 18, 18, 18,
+		],
+		size: [3, 4],
+		scale: 8,
+		receivers: [],
+		doors: [],
+		char_start: [1, 2],
+		held: 1,
+	},
+	hold_two: {
+		tiles: [
+			  0,  0,  0,
+			  0,  0, 18,
+			  0,  0,  0,
+			  0,  0,  0,
+			 18, 18, 18,
+		],
+		size: [3, 5],
+		scale: 8,
+		receivers: [],
+		doors: [],
+		char_start: [1, 2],
+		held: 2,
+	},
+	hold_step: {
+		tiles: [
+			  0,  0,  0,
+			  0,  0,  0,
+			  0,  0, 18,
+			 18, 18, 18,
+		],
+		size: [3, 4],
+		scale: 8,
+		receivers: [],
+		doors: [],
+		char_start: [1, 2],
+		held: 1,
+	},
+}
+UFX.scenes.collide_test = {
+	load_room: function (room_name) {
+		LEVEL_GRID = [[room_name]]
+		world.init([0, 0])
+		let data = room_data[room_name]
+		world.character.set_pos(GconvertT(data.char_start))
+		world.character.held_blocks.drop_all()
+		for (let j = 0 ; j < (data.held || 0) ; ++j) {
+			add_held_ore()
+		}
+		console.log(world.character.held_blocks.held)
+		world.character.update(0.02)
+		console.log(world.character.held_blocks.held)
+		;[canvas.width, canvas.height] = GconvertT(data.size)
+		canvas.style.width = (data.scale * canvas.width) + "px"
+		canvas.style.height = (data.scale * canvas.height) + "px"
+	},
+	start: function () {
+		this.load_room("hold_two")
+	},
+	think: function (dt) {
+		world.character.jump_held = document.getElementById("jump_held").checked
+		let left_held = document.getElementById("left_held").checked ? 1 : 0
+		let right_held = document.getElementById("right_held").checked ? 1 : 0
+		world.character.move_x = right_held - left_held
+	},
+	draw: function () {
+		world.room.draw()
+		world.character.draw()
+		let lines = [
+			`character.rect: ${world.character.rect}`,
+			`character.vel: ${world.character.vel}`,
+			`character.grounded: ${world.character.grounded}`,
+			`character.var_jump_timer: ${world.character.var_jump_timer}`,
+			`character.coyote_timer: ${world.character.coyote_timer}`,
+			`character.is_centering: ${world.character.is_centering}`,
+		]
+		world.character.held_blocks.held.forEach((block, j) => {
+			lines.push(`held[${j}].rect: ${block.rect}`)
+		})
+		document.getElementById("readout").value = lines.join("\n")
+		
+//		UFX.draw.text(lines.join("\n"), [0, 2], 12, "Pixelify Sans", { fill: "white", tab: "left top" })
+	},
+}
+
+function jump() {
+	world.character.jump_down = true
+	advance(1)
+	world.character.jump_down = false
+}
+
+function advance (nframes) {
+	let dt = 1 / 50
+	for (let j of range(0, nframes)) {
+		world.character.update(dt)
+		world.room.update(dt)
+	}
+}
+
+function add_held_ore () {
+	world.character.held_blocks.add_held(new NormalOre([0, 0]))
+	world.character.held_blocks.update_positions(world.character.get_anchor_top())
+}
+
+
+</script>
+
+
+ 
+ 
+ 
+

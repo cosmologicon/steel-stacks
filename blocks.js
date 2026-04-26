@@ -120,17 +120,28 @@ HeldBlock.prototype = UFX.Thing()
 			this.set_anchor_bottom(vec_add(anchor, [this.xoffset, 0]))
 		},
 		handle_horizontal_collisions: function () {
-			for (let obj of world.get_colliders(this.rect)) {
-				let [overlap_left, overlap_right] = interval_overlaps(this.xinterval, obj.xinterval)
-				if (overlap_left <= 0 || overlap_right <= 0) continue
-				let dx = overlap_left < overlap_right ? -overlap_left : overlap_right
-				this.xoffset += dx
-				return true
-			}
-			return false
+			let objs = world.get_colliders(this.rect)
+			console.log("BLOCK handle_h", this.rect, objs)
+			if (!objs.length) return false
+			let xinterval = interval_cover_set(objs.map(obj => obj.xinterval))
+			let overlap_left = overlap(this.xinterval, xinterval)
+			let overlap_right = overlap(xinterval, this.xinterval)
+			console.assert(overlap_left > 0 && overlap_right > 0)
+			let dx = overlap_left < overlap_right ? -overlap_left : overlap_right
+			console.log("BLOCK handle_h", overlap_left, overlap_right, dx, this.xoffset, this.xoffset + dx)
+			this.xoffset += dx
+			return true
+		},
+		get_vertical_overlap_down: function () {
+			// Only collide upward.
+			let objs = world.get_colliders(this.rect)
+			if (!objs.length) return 0
+			let yinterval = interval_cover_set(objs.map(obj => obj.yinterval))
+			let overlap_down = overlap(yinterval, this.yinterval)
+			console.log("BLOCK overlap_down", overlap_down)
+			return overlap_down
 		},
 		drop: function () {
-			console.log("drop")
 			this.original_block.drop_from(this.rect)
 			world.room.add_ore(this.original_block)
 		},
@@ -144,6 +155,11 @@ function HeldBlocks() {
 HeldBlocks.prototype = {
 	reset: function () {
 		this.held = []
+		this.anchor = null
+	},
+	set_anchor: function (anchor) {
+		this.anchor = anchor
+		this.update_positions()
 	},
 	create_held: function (block) {
 		return new HeldBlock(block, this.held.length)
@@ -157,7 +173,9 @@ HeldBlocks.prototype = {
 	drop_all: function () {
 		this.drop_from(0)
 	},
-	update_positions: function (anchor) {
+	update_positions: function () {
+		let anchor = this.anchor
+		console.assert(anchor !== null)
 		for (let block of this.held) {
 			block.update_position(anchor)
 			anchor = block.get_anchor_top()
@@ -165,13 +183,18 @@ HeldBlocks.prototype = {
 	},
 	recenter_held: function (dt) {
 		this.held.forEach(block => block.recenter(dt))
+		this.update_positions()
 	},
-	handle_horizontal_collisions: function (anchor) {
+	handle_horizontal_collisions: function () {
 		for (let block of this.held) {
 			if (block.handle_horizontal_collisions()) {
-				this.update_positions(anchor)
+				this.update_positions()
+				console.log(block.rect)
 			}
 		}
+	},
+	get_vertical_overlap_down: function () {
+		return Math.max(0, ...this.held.map(block => block.get_vertical_overlap_down()))
 	},
 	check_for_falling_blocks: function (character) {
 		let below = character.xinterval

@@ -80,6 +80,7 @@ NormalOre.prototype = UFX.Thing()
 		drop_from: function (pos) {
 			this.set_pos(pos)
 			this.snap_to_grid_x()
+			console.log("drop_from", pos, this.get_pos())
 			this.grounded = false
 			this.vy = 0
 		},
@@ -98,19 +99,20 @@ NormalOre.prototype = UFX.Thing()
 
 
 function Room(room_id) {
-	this.data = room_data[room_id]
+	this.room_id = room_id
 	this.load()
 }
 Room.prototype = {
 	load: function () {
-		let nx = 16, ny = 12
+		this.data = room_data[this.room_id]
+		let [nx, ny] = this.data.size || [16, 12]
 		console.assert(this.data.tiles.length == nx * ny)
 		this.bg = make_canvas(GconvertT([nx, ny]), "fs #070f17 f0")  // TODO: bg image
 		this.slabs = {}
 		this.ore = []
 		this.buildings = []
-		for (let y = 0 , j = 0 ; y < 12 ; ++y) {
-			for (let x = 0 ; x < 16 ; ++x , ++j) {
+		for (let y = 0 , j = 0 ; y < ny ; ++y) {
+			for (let x = 0 ; x < nx ; ++x , ++j) {
 				let gid = this.data.tiles[j]
 				if (gid == 0) continue
 				gid -= 1
@@ -148,6 +150,10 @@ Room.prototype = {
 		let slabs = TrectG(rectG).filter(p => p in this.slabs).map(p => this.slabs[p])
 		return slabs.concat(this.colliders)
 	},
+	get_potential_grounded_colliders: function (rectG) {
+		let slabs = TrectG(rectG).filter(p => p in this.slabs).map(p => this.slabs[p])
+		return slabs.concat(this.colliders.filter(obj => obj.grounded))
+	},
 	draw: function () {
 		UFX.draw("drawimage0", this.bg)
 		this.drawers.forEach(obj => obj.draw())
@@ -175,15 +181,17 @@ pw_6    .     .     .   gl_1  hb_6    .   hb_3    .     .
 `)
 
 let world = {
-	init: function () {
-		this.room_coord = [2, 0]
+	init: function (room_coord) {
+		this.room_coord = room_coord || [2, 0]
 		this.rooms = {}
 		this.load_room()
 		this.character = new Character([100, 20])
 	},
 	load_room: function () {
 		let [room_x, room_y] = this.room_coord
-		let room_id = LEVEL_GRID[room_y][room_x]
+		this.load_room_id(LEVEL_GRID[room_y][room_x])
+	},
+	load_room_id: function (room_id) {
 		this.rooms[room_id] ||= new Room(room_id)
 		this.room = this.rooms[room_id]
 	},
@@ -198,11 +206,14 @@ let world = {
 	get_colliders: function (rect) {
 		return this.room.get_potential_colliders(rect).filter(obj => rect_collide(obj.rect, rect))
 	},
+	get_grounded_colliders: function (rect) {
+		return this.room.get_potential_grounded_colliders(rect).filter(obj => rect_collide(obj.rect, rect))
+	},
 	is_on_ground: function (rect) {
 		let [x, y, w, h] = rect, ybase = y + h
 		let ps = [[x, ybase], [x + w - 1, ybase]]
 		// TODO: more efficient
-		return ps.some(([x, y]) => this.get_colliders([x, y, 1, 1]).length)
+		return ps.some(([x, y]) => this.get_grounded_colliders([x, y, 1, 1]).length)
 	},
 	pickup_targets: function (pos, u) {
 		let [x, y] = pos, rect = [x - u, y, 2 * u, 1], xinterval = [x - u, 2 * u]

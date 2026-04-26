@@ -17,6 +17,7 @@ UFX.scenes.end = {
 
 
 function Character(pos) {
+	this.held_blocks = new HeldBlocks()
 	this.set_pos_size(pos, [14, 24])
 	this.vel = [0, 0]
 	this.grounded = false
@@ -28,7 +29,6 @@ function Character(pos) {
 	this.centering_targetx = null
 	this.picking_up = false
 	this.centering_callback = null
-	this.held_blocks = new HeldBlocks()
 
 	// Half-widths (u is half of w, get it?)
 	this.upickup = 9  // for picking up
@@ -43,10 +43,7 @@ function Character(pos) {
 	this.var_jump_time = 0.2
 	this.coyote_time = 0.05
 
-	// Changed from 160 in the pygame version. The maximum jump height with jump_speed
-	// set to 160 is 23.78 (same in both versions). Somehow this is enough to get on top
-	// of a block with height 24 in pygame. Maybe pygame.Rect coordinate truncation?
-	this.jump_speed = 164
+	this.jump_speed = 160
 
 	let char_frames = slice_sprite_sheet("character_ss", 24, 24)
 	this.images = {
@@ -63,6 +60,9 @@ Character.prototype = UFX.Thing()
 	.addcomp(CollisionRect)
 	.addcomp(DrawImageCentered)
 	.addcomp({
+		set_rect: function () {
+			this.held_blocks.set_anchor(this.get_anchor_top())
+		},
 		control: function (key) {
 			this.move_x = (key.pressed.right ? 1 : 0) - (key.pressed.left ? 1 : 0)
 			this.jump_held = key.pressed.jump
@@ -150,34 +150,32 @@ Character.prototype = UFX.Thing()
 						vy += this.gravity * 0.5 * dt
 					} else {
 						this.var_jump_timer = 0
-						if (vy < 0) vy *= 0.5  // TODO: indepedent of dt
+						if (vy < 0) vy *= 0.5  // TODO: make independent of dt
 					}
 				} else {
 					vy += this.gravity * dt
 				}
 			}
 			this.vel = [vx, vy]
+			console.log("update_movement", accel, this.vel)
 			if (this.jump_down && this.coyote_timer > 0) this.jump()
 		},
 		update_position: function (dt) {
 			let [vx, vy] = this.vel
 			this.scoot([vx * dt, 0])
-			for (let obj of world.get_colliders(this.rect)) {
-				this.collide_horizontal(obj)
-				break
-			}
+			this.handle_horizontal_collision()
 			this.held_blocks.recenter_held(dt)
 			this.held_blocks.handle_horizontal_collisions(this.get_anchor_top())
 			this.held_blocks.check_for_falling_blocks(this)
 			this.scoot([0, vy * dt])
-			for (let obj of world.get_colliders(this.rect)) this.collide_vertical(obj)
+			this.handle_vertical_collision()
+			this.handle_vertical_block_collision()
 			;[vx, vy] = this.vel
 			if (vy > 0) {
 				this.grounded = false
 			} else if (this.grounded && vy == 0) {
 				this.grounded = world.is_on_ground(this.rect)
 			}
-			this.held_blocks.update_positions(this.get_anchor_top())
 		},
 		update_centering: function (dt) {
 			if (!this.centering_target) {
@@ -189,12 +187,21 @@ Character.prototype = UFX.Thing()
 			if (this.approach_anchor_bottom(this.centering_target, centering_speed * dt)) {
 				this.finish_centering()
 			}
-			this.held_blocks.update_positions(this.get_anchor_top())
 		},
-		collide_horizontal: function (obj) {
+		handle_horizontal_collision: function () {
+			// The max jump height is 23.78 but you want to be able to jump up to a block 24 high.
+			// In pygame I believe this is subtly handled via pygame.Rect coordinate truncation.
+			// Here we do it by excluding 1 pixel from the bottom of the character's rect for the
+			// purpose of horizontal collision only.
+			let [x, y, w, h] = this.rect, hrect = [x, y, w, h - 1]
+			let objs = world.get_colliders(hrect)
+			if (!objs.length) return
+			let xinterval = interval_cover_set(objs.map(obj => obj.xinterval))
+			let overlap_left = overlap(this.xinterval, xinterval)
+			let overlap_right = overlap(xinterval, this.xinterval)
+			console.assert(overlap_left > 0 && overlap_right > 0)
+			console.log("handle_horizontal_collision", this.rect, objs, overlap_left, overlap_right, this.vel)
 			let [vx, vy] = this.vel
-			let [overlap_left, overlap_right] = interval_overlaps(this.xinterval, obj.xinterval)
-			if (overlap_left <= 0 || overlap_right <= 0) return
 			let dx =
 				vx > 0 ? -overlap_left :
 				vx < 0 ? overlap_right :
@@ -203,20 +210,40 @@ Character.prototype = UFX.Thing()
 			this.scoot([dx, 0])
 			this.vel = [0, vy]
 		},
-		collide_vertical: function (obj) {
+		handle_vertical_collision: function () {
+			let overlap_up = 0
+			let overlap_down = 0 // this.held_blocks.get_vertical_overlap_down()
+			let objs = world.get_colliders(this.rect)
+			if (objs.length) {
+				let yinterval = interval_cover_set(objs.map(obj => obj.yinterval))
+				overlap_up = overlap(this.yinterval, yinterval)
+				overlap_down = Math.max(overlap_down, overlap(yinterval, this.yinterval))
+			}
+			console.log("handle_vertical_collision", overlap_up, overlap_down)
+			if (overlap_up == 0 && overlap_down == 0) return
 			let [vx, vy] = this.vel
-			let [overlap_top, overlap_bottom] = interval_overlaps(this.yinterval, obj.yinterval)
-			// This can happen with two colliders in the same frame. TODO: Avoid?
-			if (overlap_top <= 0 || overlap_bottom <= 0) return
-			if (vy > 0) {
-				this.scoot([0, -overlap_top])
+			if (overlap_up < overlap_down && vy >= 0) {
+				console.log("scoot up", -overlap_up)
+				this.scoot([0, -overlap_up])
 				this.grounded = true
-			} else {
-				this.scoot([0, overlap_bottom])
+			}
+			if (overlap_down < overlap_up && vy <= 0) {
+				console.log("scoot down", overlap_down)
+				this.scoot([0, overlap_down])
 				this.var_jump_timer = 0
 			}
 			this.vel = [vx, 0]
 		},
+		handle_vertical_block_collision: function () {
+			let overlap_down = this.held_blocks.get_vertical_overlap_down()
+			if (overlap_down == 0) return
+			let [vx, vy] = this.vel
+			console.log("block scoot down", overlap_down)
+			this.scoot([0, overlap_down])
+			this.var_jump_timer = 0
+			this.vel = [vx, 0]
+		},
+		
 		draw: function () {
 			this.held_blocks.held.forEach(block => block.draw())
 		},

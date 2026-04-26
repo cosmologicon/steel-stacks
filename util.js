@@ -21,10 +21,16 @@ let round_pos = ([x, y]) => [Math.round(x), Math.round(y)]
 
 // Intervals are [x, w] Arrays representing the half-open interval [x, x+w).
 let interval_collide = ([x0, w0], [x1, w1]) => x0 + w0 > x1 && x1 + w1 > x0
+// Returns a single interval that covers both intervals, even if they don't collide.
+let interval_cover = ([x0, w0], [x1, w1]) => [Math.min(x0, x1), Math.max(x0 + w0, x1 + w1) - Math.min(x0, x1)]
+let interval_cover_set = (intervals) => intervals.reduce(interval_cover)
+// How far the first interval must move to the left to not overlap the second interval.
+let overlap = ([x0, w0], [x1, w1]) => x0 + w0 - x1
 // How far the first interval must move to the left and right to not overlap the second obj.
 // Both values are positive if the intervals collide.
-let interval_overlaps = ([x0, w0], [x1, w1]) => [x0 + w0 - x1, x1 + w1 - x0]
-let get_abs_overlap = ([x0, w0], [x1, w1]) => Math.max(Math.min(x0 + w0 - x1, x1 + w1 - x0), 0)
+let interval_overlaps = (int0, int1) => [overlap(int0, int1), overlap(int1, int0)]
+// This is positive when the intervals collide.
+let get_abs_overlap = (int0, int1) => Math.max(Math.min(overlap(int0, int1), overlap(int1, int0)), 0)
 
 // Rects include all points whose x-coordinate is within the interval [x, w] and
 // y-coordinate is within the interval [y, h].

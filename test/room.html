@@ -47,7 +47,11 @@ UFX.scenes.room_test = {
 	draw: function () {
 		UFX.draw("fs #070f17 f0")
 		world.room.draw()
-		UFX.draw.text(`room_coord: ${world.room_coord}`, [0, 2], 12, "Pixelify Sans", { fill: "white", tab: "left top" })
+		let lines = [
+			`room_coord: ${world.room_coord}`,
+			`room_id: ${world.room.room_id}`,
+		]
+		UFX.draw.text(lines.join("\n"), [0, 2], 12, "Pixelify Sans", { fill: "white", tab: "left top" })
 	},
 }
 </script>
