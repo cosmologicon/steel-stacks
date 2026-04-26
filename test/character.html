@@ -42,7 +42,7 @@ let room_data = {
 			  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
 			  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
 			  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-			  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+			  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 18,  0,  0,  0,  0,  0,
 			  0,  0,  0,  0, 18,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
 			 18,  0,  0,  0,  0,  0,  0, 18,  0,  0, 18,  0,  0,  0,  0, 18,
 			 18,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 18,  0,  0, 18,
@@ -64,12 +64,13 @@ UFX.scenes.character_test = {
 		let key = UFX.key.state()
 		world.character.control(key)
 		world.character.update(dt)
+		world.room.update(dt)
 	},
 	draw: function () {
 		world.room.draw()
 		world.character.draw()
 		let lines = [
-			`pos: ${world.character.pos}`,
+			`pos: ${world.character.get_pos()}`,
 			`vel: ${world.character.vel}`,
 			`is_centering: ${world.character.is_centering}`,
 		]

@@ -40,6 +40,14 @@ let CollisionRect = {
 		let [_x, _y, w, h] = this.rect
 		this.set_rect([x, y, w, h])
 	},
+	snap_to_grid: function () {
+		let [x, y, w, h] = this.rect
+		this.set_rect([GnearestgridG(x), GnearestgridG(y), w, h])
+	},
+	snap_to_grid_x: function () {
+		let [x, y, w, h] = this.rect
+		this.set_rect([GnearestgridG(x), y, w, h])
+	},
 	// Returns true if the target position is reached.
 	approach: function ([xtarget, ytarget], dpos) {
 		let [x, y] = this.get_pos()
@@ -111,6 +119,21 @@ HeldBlock.prototype = UFX.Thing()
 		update_position: function (anchor) {
 			this.set_anchor_bottom(vec_add(anchor, [this.xoffset, 0]))
 		},
+		handle_horizontal_collisions: function () {
+			for (let obj of world.get_colliders(this.rect)) {
+				let [overlap_left, overlap_right] = interval_overlaps(this.xinterval, obj.xinterval)
+				if (overlap_left <= 0 || overlap_right <= 0) continue
+				let dx = overlap_left < overlap_right ? -overlap_left : overlap_right
+				this.xoffset += dx
+				return true
+			}
+			return false
+		},
+		drop: function () {
+			console.log("drop")
+			this.original_block.drop_from(this.rect)
+			world.room.add_ore(this.original_block)
+		},
 	})
 
 
@@ -128,11 +151,11 @@ HeldBlocks.prototype = {
 	add_held: function (block) {
 		this.held.push(this.create_held(block))
 	},
+	drop_from: function (stack_index) {
+		this.held.splice(stack_index).forEach(block => block.drop())
+	},
 	drop_all: function () {
-		for (let block of this.held) {
-			world.room.add_block(block.to_world_block())
-		}
-		this.held = []
+		this.drop_from(0)
 	},
 	update_positions: function (anchor) {
 		for (let block of this.held) {
@@ -143,14 +166,22 @@ HeldBlocks.prototype = {
 	recenter_held: function (dt) {
 		this.held.forEach(block => block.recenter(dt))
 	},
-	handle_horizontal_collisions: function (character_midtop, dt) {
-		this.recenter_held(dt)
+	handle_horizontal_collisions: function (anchor) {
 		for (let block of this.held) {
-			let [overlap_left, overlap_right] = interval_overlaps(block.xinterval, obj.xinterval)
-			if (overlap_left <= 0 || overlap_right <= 0) return
-			let dx = overlap_left < overlap_right ? -overlap_left : overlap_right
-			block.xoffset += dx
-			this.update_positions(character_midtop)
+			if (block.handle_horizontal_collisions()) {
+				this.update_positions(anchor)
+			}
+		}
+	},
+	check_for_falling_blocks: function (character) {
+		let below = character.xinterval
+		for (let j = 0 ; j < this.held.length ; ++j) {
+			let current = this.held[j].xinterval
+			if (get_abs_overlap(below, current) < 2) {
+				this.drop_from(j)
+				return
+			}
+			below = current
 		}
 	},
 }

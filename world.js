@@ -71,10 +71,30 @@ Door.prototype = {
 function NormalOre(tile_pos) {
 	this.set_tile_pos(tile_pos)
 	this.image = tile_img(0)
+	this.grounded = true
 }
 NormalOre.prototype = UFX.Thing()
 	.addcomp(CollisionRect)
 	.addcomp(DrawImage)
+	.addcomp({
+		drop_from: function (pos) {
+			this.set_pos(pos)
+			this.snap_to_grid_x()
+			this.grounded = false
+			this.vy = 0
+		},
+		update: function (dt) {
+			if (this.grounded) return
+			this.scoot([0, this.vy * dt])
+			let gravity = 1500, max_fall_speed = 400
+			this.vy = approach(this.vy, max_fall_speed, gravity * dt)
+			if (world.is_on_ground(this.rect)) this.land()
+		},
+		land: function () {
+			this.grounded = true
+			this.snap_to_grid()
+		},
+	})
 
 
 function Room(room_id) {
@@ -110,6 +130,14 @@ Room.prototype = {
 	set_collections: function () {
 		this.drawers = (this.checkpoint ? [this.checkpoint] : []).concat(this.receivers, this.doors, this.ore)
 		this.colliders = this.ore.concat(this.doors)
+		this.updaters = this.ore
+	},
+	update: function (dt) {
+		this.updaters.forEach(obj => obj.update(dt))
+	},
+	add_ore: function (block) {
+		this.ore.push(block)
+		this.set_collections()
 	},
 	remove_ore: function (block) {
 		this.ore = this.ore.filter(obj => obj != block)
@@ -181,8 +209,6 @@ let world = {
 		let targets = this.room.ore.filter(obj => rect_collide(rect, obj.rect))
 		if (!targets.length) return []
 		let abs_overlap = obj => get_abs_overlap(obj.xinterval, xinterval)
-		console.log(xinterval, targets[0].xinterval)
-		console.log(targets.map(obj => abs_overlap(obj)))
 		console.assert(targets.every(obj => abs_overlap(obj) > 0))
 		// Sort from most to least overlap
 		targets.sort((obj0, obj1) => abs_overlap(obj1) - abs_overlap(obj0))

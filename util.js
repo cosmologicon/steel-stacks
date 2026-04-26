@@ -37,6 +37,7 @@ let tile_size = [GscaleT, GscaleT]
 // T: tile coordinates (integers). A point is within the tile.
 let GconvertT = ([xT, yT]) => [GscaleT * xT, GscaleT * yT]
 let TconvertG = ([xG, yG]) => [Math.floor(xG / GscaleT), Math.floor(yG / GscaleT)]
+let GnearestgridG = (xG) => GscaleT * Math.round(xG / GscaleT)
 
 // Tiles covered by the interval/rect.
 let TintervalG = ([xG, wG]) => range(Math.floor(xG / GscaleT), (xG + wG) / GscaleT)

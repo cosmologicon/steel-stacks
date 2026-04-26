@@ -162,7 +162,13 @@ Character.prototype = UFX.Thing()
 		update_position: function (dt) {
 			let [vx, vy] = this.vel
 			this.scoot([vx * dt, 0])
-			for (let obj of world.get_colliders(this.rect)) this.collide_horizontal(obj)
+			for (let obj of world.get_colliders(this.rect)) {
+				this.collide_horizontal(obj)
+				break
+			}
+			this.held_blocks.recenter_held(dt)
+			this.held_blocks.handle_horizontal_collisions(this.get_anchor_top())
+			this.held_blocks.check_for_falling_blocks(this)
 			this.scoot([0, vy * dt])
 			for (let obj of world.get_colliders(this.rect)) this.collide_vertical(obj)
 			;[vx, vy] = this.vel
@@ -188,7 +194,6 @@ Character.prototype = UFX.Thing()
 		collide_horizontal: function (obj) {
 			let [vx, vy] = this.vel
 			let [overlap_left, overlap_right] = interval_overlaps(this.xinterval, obj.xinterval)
-			// This can happen with two colliders in the same frame. TODO: Avoid?
 			if (overlap_left <= 0 || overlap_right <= 0) return
 			let dx =
 				vx > 0 ? -overlap_left :
