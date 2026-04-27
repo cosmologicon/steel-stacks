@@ -105,13 +105,10 @@ UFX.scenes.collide_test = {
 		world.init([0, 0])
 		let data = room_data[room_name]
 		world.character.set_pos(GconvertT(data.char_start))
-		world.character.held_blocks.drop_all()
 		for (let j = 0 ; j < (data.held || 0) ; ++j) {
 			add_held_ore()
 		}
-		console.log(world.character.held_blocks.held)
 		world.character.update(0.02)
-		console.log(world.character.held_blocks.held)
 		;[canvas.width, canvas.height] = GconvertT(data.size)
 		canvas.style.width = (data.scale * canvas.width) + "px"
 		canvas.style.height = (data.scale * canvas.height) + "px"
@@ -136,9 +133,9 @@ UFX.scenes.collide_test = {
 			`character.coyote_timer: ${world.character.coyote_timer}`,
 			`character.is_centering: ${world.character.is_centering}`,
 		]
-		world.character.held_blocks.held.forEach((block, j) => {
-			lines.push(`held[${j}].rect: ${block.rect}`)
-		})
+//		world.character.held_blocks.held.forEach((block, j) => {
+//			lines.push(`held[${j}].rect: ${block.rect}`)
+//		})
 		document.getElementById("readout").value = lines.join("\n")
 		
 //		UFX.draw.text(lines.join("\n"), [0, 2], 12, "Pixelify Sans", { fill: "white", tab: "left top" })
@@ -160,8 +157,7 @@ function advance (nframes) {
 }
 
 function add_held_ore () {
-	world.character.held_blocks.add_held(new NormalOre([0, 0]))
-	world.character.held_blocks.update_positions(world.character.get_anchor_top())
+	world.character.add_held(new HeldBlock(new NormalOre([0, 0])))
 }
 
 

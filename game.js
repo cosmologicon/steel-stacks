@@ -17,7 +17,6 @@ UFX.scenes.end = {
 
 
 function Character(pos) {
-	this.held_blocks = new HeldBlocks()
 	this.set_pos_size(pos, [14, 24])
 	this.vel = [0, 0]
 	this.grounded = false
@@ -59,10 +58,8 @@ function Character(pos) {
 Character.prototype = UFX.Thing()
 	.addcomp(CollisionRect)
 	.addcomp(DrawImageCentered)
+	.addcomp(CanHold)
 	.addcomp({
-		set_rect: function () {
-			this.held_blocks.set_anchor(this.get_anchor_top())
-		},
 		control: function (key) {
 			this.move_x = (key.pressed.right ? 1 : 0) - (key.pressed.left ? 1 : 0)
 			this.jump_held = key.pressed.jump
@@ -100,9 +97,9 @@ Character.prototype = UFX.Thing()
 		},
 		complete_pickup: function (block) {
 			this.picking_up = false
-			this.set_anchor_bottom(block.get_anchor_top())
+			this.set_center(block.get_center())
 			world.remove_ore(block)
-			this.held_blocks.add_held(block)
+			this.add_held(new HeldBlock(block))
 		},
 		update: function (dt) {
 			if (this.centering_finish_timer > 0) {
@@ -157,16 +154,17 @@ Character.prototype = UFX.Thing()
 				}
 			}
 			this.vel = [vx, vy]
-			console.log("update_movement", accel, this.vel)
+//			console.log("update_movement", accel, this.vel)
 			if (this.jump_down && this.coyote_timer > 0) this.jump()
 		},
 		update_position: function (dt) {
 			let [vx, vy] = this.vel
 			this.scoot([vx * dt, 0])
 			this.handle_horizontal_collision()
-			this.held_blocks.recenter_held(dt)
-			this.held_blocks.handle_horizontal_collisions(this.get_anchor_top())
-			this.held_blocks.check_for_falling_blocks(this)
+			if (this.held) {
+				this.held.handle_horizontal_collisions()
+				this.held.check_fall(this)
+			}
 			this.scoot([0, vy * dt])
 			this.handle_vertical_collision()
 			this.handle_vertical_block_collision()
@@ -190,7 +188,7 @@ Character.prototype = UFX.Thing()
 		},
 		handle_horizontal_collision: function () {
 			// The max jump height is 23.78 but you want to be able to jump up to a block 24 high.
-			// In pygame I believe this is subtly handled via pygame.Rect coordinate truncation.
+			// In pygame this works somehow, I suspect via pygame.Rect coordinate truncation.
 			// Here we do it by excluding 1 pixel from the bottom of the character's rect for the
 			// purpose of horizontal collision only.
 			let [x, y, w, h] = this.rect, hrect = [x, y, w, h - 1]
@@ -200,7 +198,7 @@ Character.prototype = UFX.Thing()
 			let overlap_left = overlap(this.xinterval, xinterval)
 			let overlap_right = overlap(xinterval, this.xinterval)
 			console.assert(overlap_left > 0 && overlap_right > 0)
-			console.log("handle_horizontal_collision", this.rect, objs, overlap_left, overlap_right, this.vel)
+//			console.log("handle_horizontal_collision", this.rect, objs, overlap_left, overlap_right, this.vel)
 			let [vx, vy] = this.vel
 			let dx =
 				vx > 0 ? -overlap_left :
@@ -212,40 +210,39 @@ Character.prototype = UFX.Thing()
 		},
 		handle_vertical_collision: function () {
 			let overlap_up = 0
-			let overlap_down = 0 // this.held_blocks.get_vertical_overlap_down()
+			let overlap_down = 0
 			let objs = world.get_colliders(this.rect)
 			if (objs.length) {
 				let yinterval = interval_cover_set(objs.map(obj => obj.yinterval))
 				overlap_up = overlap(this.yinterval, yinterval)
 				overlap_down = Math.max(overlap_down, overlap(yinterval, this.yinterval))
 			}
-			console.log("handle_vertical_collision", overlap_up, overlap_down)
-			if (overlap_up == 0 && overlap_down == 0) return
+//			console.log("handle_vertical_collision", overlap_up, overlap_down)
+			if (overlap_up == 0 || overlap_down == 0) return
 			let [vx, vy] = this.vel
-			if (overlap_up < overlap_down && vy >= 0) {
+			if (overlap_up < overlap_down) {
 				console.log("scoot up", -overlap_up)
 				this.scoot([0, -overlap_up])
 				this.grounded = true
 			}
+/*
 			if (overlap_down < overlap_up && vy <= 0) {
 				console.log("scoot down", overlap_down)
 				this.scoot([0, overlap_down])
 				this.var_jump_timer = 0
 			}
+*/
 			this.vel = [vx, 0]
 		},
 		handle_vertical_block_collision: function () {
-			let overlap_down = this.held_blocks.get_vertical_overlap_down()
-			if (overlap_down == 0) return
 			let [vx, vy] = this.vel
-			console.log("block scoot down", overlap_down)
+			if (vy > 0) return
+			let overlap_down = this.get_vertical_overlap_down()
+			if (overlap_down == 0) return
+//			console.log("block scoot down", overlap_down)
 			this.scoot([0, overlap_down])
 			this.var_jump_timer = 0
 			this.vel = [vx, 0]
-		},
-		
-		draw: function () {
-			this.held_blocks.held.forEach(block => block.draw())
 		},
 	})
 
