@@ -71,8 +71,8 @@ UFX.scenes.character_test = {
 		world.character.draw()
 		let lines = [
 			`pos: ${world.character.get_pos()}`,
-			`vel: ${world.character.vel}`,
-			`is_centering: ${world.character.is_centering}`,
+			`vel: ${world.character.vx},${world.character.vy}`,
+			`num_held: ${world.character.num_held()}`,
 		]
 		UFX.draw.text(lines.join("\n"), [0, 2], 12, "Pixelify Sans", { fill: "white", tab: "left top" })
 	},

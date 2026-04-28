@@ -80,7 +80,6 @@ NormalOre.prototype = UFX.Thing()
 		drop_from: function (pos) {
 			this.set_pos(pos)
 			this.snap_to_grid_x()
-			console.log("drop_from", pos, this.get_pos())
 			this.grounded = false
 			this.vy = 0
 		},
@@ -212,18 +211,17 @@ let world = {
 	is_on_ground: function (rect) {
 		let [x, y, w, h] = rect, ybase = y + h
 		let ps = [[x, ybase], [x + w - 1, ybase]]
-		// TODO: more efficient
 		return ps.some(([x, y]) => this.get_grounded_colliders([x, y, 1, 1]).length)
 	},
-	pickup_targets: function (pos, u) {
+	pickup_target: function (pos, u) {
 		let [x, y] = pos, rect = [x - u, y, 2 * u, 1], xinterval = [x - u, 2 * u]
 		let targets = this.room.ore.filter(obj => rect_collide(rect, obj.rect))
-		if (!targets.length) return []
+		if (!targets.length) return null
 		let abs_overlap = obj => get_abs_overlap(obj.xinterval, xinterval)
 		console.assert(targets.every(obj => abs_overlap(obj) > 0))
 		// Sort from most to least overlap
 		targets.sort((obj0, obj1) => abs_overlap(obj1) - abs_overlap(obj0))
-		return targets
+		return targets[0]
 	},
 	remove_ore: function (block) {
 		this.room.remove_ore(block)

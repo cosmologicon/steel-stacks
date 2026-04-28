@@ -102,15 +102,14 @@ let CanHold = {
 	handle_horizontal_collisions: function () {
 		if (this.held) this.held.handle_horizontal_collisions()
 	},
-	get_vertical_overlap_down: function () {
-		// Only collide upward.
-		let objs = world.get_colliders(this.rect), overlap_down = 0
+	get_upward_overlap: function () {
+		let objs = world.get_colliders(this.rect), upward_overlap = 0
 		if (objs.length) {
 			let yinterval = interval_cover_set(objs.map(obj => obj.yinterval))
-			overlap_down = overlap(yinterval, this.yinterval)
+			upward_overlap = overlap(yinterval, this.yinterval)
 		}
-		if (this.held) overlap_down = Math.max(overlap_down, this.held.get_vertical_overlap_down())
-		return overlap_down
+		if (this.held) upward_overlap = Math.max(upward_overlap, this.held.get_upward_overlap())
+		return upward_overlap
 	},
 	update: function (dt) {
 		if (this.held) this.held.update(dt)
@@ -145,16 +144,13 @@ let HeldWithOffset = {
 	},
 	handle_horizontal_collisions: function () {
 		let objs = world.get_colliders(this.rect)
-//		console.log("BLOCK handle_h", this.rect, objs)
 		if (!objs.length) return false
 		let xinterval = interval_cover_set(objs.map(obj => obj.xinterval))
 		let overlap_left = overlap(this.xinterval, xinterval)
 		let overlap_right = overlap(xinterval, this.xinterval)
 		console.assert(overlap_left > 0 && overlap_right > 0)
 		let dx = overlap_left < overlap_right ? -overlap_left : overlap_right
-//		console.log("BLOCK handle_h", overlap_left, overlap_right, dx, this.xoffset, this.xoffset + dx)
 		this.set_xoffset(this.xoffset + dx)
-//		console.log("BLOCK handle_h", this.anchor, this.xoffset, this.rect)
 		return true
 	},
 	handle_vertical_collisions: function () {
